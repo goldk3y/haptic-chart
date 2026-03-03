@@ -2,7 +2,7 @@
 
 import { useCallback } from "react";
 import { Liveline } from "liveline";
-import { useWebHaptics } from "web-haptics/react";
+import { useHapticFeedback } from "../hooks/useHapticFeedback";
 import { usePriceSimulation } from "../hooks/usePriceSimulation";
 
 interface HapticChartProps {
@@ -10,7 +10,7 @@ interface HapticChartProps {
 }
 
 export function HapticChart({ theme }: HapticChartProps) {
-  const { trigger } = useWebHaptics({ debug: false });
+  const { trigger } = useHapticFeedback();
 
   // Calculate haptic duration based on price change magnitude
   const handlePriceChange = useCallback(
