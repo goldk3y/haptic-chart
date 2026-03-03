@@ -1,55 +1,31 @@
 "use client";
 
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useMemo } from "react";
 
 /**
  * Custom hook for cross-platform haptic feedback.
  * Uses navigator.vibrate() on Android and the switch checkbox trick on iOS Safari 17.4+
+ *
+ * Based on: https://github.com/tijnjh/ios-haptics
  */
 export function useHapticFeedback() {
-  const labelRef = useRef<HTMLLabelElement | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
   // Check if device supports haptics (touch device)
-  const supportsHaptics =
-    typeof window !== "undefined" &&
-    window.matchMedia("(pointer: coarse)").matches;
+  const supportsHaptics = useMemo(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia("(pointer: coarse)").matches,
+    []
+  );
 
   // Check if we have native vibrate support (Android)
-  const hasVibrate =
-    typeof navigator !== "undefined" &&
-    typeof navigator.vibrate === "function";
+  const hasVibrate = useMemo(
+    () =>
+      typeof navigator !== "undefined" &&
+      typeof navigator.vibrate === "function",
+    []
+  );
 
-  // Create persistent hidden switch checkbox for iOS haptics
-  useEffect(() => {
-    if (typeof document === "undefined") return;
-
-    // Create label element
-    const label = document.createElement("label");
-    label.ariaHidden = "true";
-    label.style.cssText =
-      "position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;";
-
-    // Create input with switch attribute (key for iOS haptics)
-    const input = document.createElement("input");
-    input.type = "checkbox";
-    input.setAttribute("switch", ""); // This enables iOS haptic feedback!
-    input.tabIndex = -1;
-
-    label.appendChild(input);
-    document.body.appendChild(label);
-
-    labelRef.current = label;
-    inputRef.current = input;
-
-    return () => {
-      if (label.parentNode) {
-        label.parentNode.removeChild(label);
-      }
-    };
-  }, []);
-
-  // Single haptic pulse
+  // Single haptic pulse - creates fresh element each time (important for iOS)
   const trigger = useCallback(
     (duration: number = 50) => {
       try {
@@ -60,9 +36,21 @@ export function useHapticFeedback() {
         }
 
         // Fall back to iOS switch checkbox trick
-        if (supportsHaptics && labelRef.current) {
-          labelRef.current.click();
-        }
+        // Must create fresh element each time for haptic to fire
+        if (!supportsHaptics) return;
+
+        const labelEl = document.createElement("label");
+        labelEl.ariaHidden = "true";
+        labelEl.style.display = "none";
+
+        const inputEl = document.createElement("input");
+        inputEl.type = "checkbox";
+        inputEl.setAttribute("switch", ""); // Key for iOS haptic feedback
+
+        labelEl.appendChild(inputEl);
+        document.head.appendChild(labelEl);
+        labelEl.click();
+        document.head.removeChild(labelEl);
       } catch {
         // Silently fail
       }
